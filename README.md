@@ -1,2 +1,4 @@
 # my-voice-asssistent
-simplue voice controlled assistant for linux
+
+simple voice controlled assistant for linux
+
