@@ -27,12 +27,15 @@
             <artifactId>google-cloud-speech</artifactId>
             <version>2.6.0</version>
         </dependency>
-        <!-- Java Sound API -->
-        <dependency>
-            <groupId>javax.sound</groupId>
-            <artifactId>javax.sound-api</artifactId>
-            <version>1.0.0</version>
-        </dependency>
+
+        <!-- JavaSound API (already part of JDK, no need to add) -->
+
+        <!-- Javax Sound API (example library if needed) -->
+<!--        <dependency>-->
+<!--            <groupId>javax.sound</groupId>-->
+<!--            <artifactId>sampled</artifactId>-->
+<!--            <version>1.0.0</version>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

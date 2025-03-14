@@ -4,13 +4,16 @@ import com.google.cloud.speech.v1.*;
 import com.google.protobuf.ByteString;
 
 import javax.sound.sampled.*;
-import java.io.*;
-
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 /**
- * VoiceAssistant
+ * Hello world!
  */
-public class VoiceAssistant {
+public class VoiceAssistantOld {
     private static final int SAMPLE_RATE = 16000; // 16 kHz
     private static final int SILENCE_THRESHOLD = 1000; // Próg ciszy
     private static final int SILENCE_DURATION = 1000; // Minimalny czas ciszy (ms)
@@ -129,5 +132,131 @@ public class VoiceAssistant {
         return processedOut.toByteArray();
     }
 
+//
+//    public static void main(String[] args) {
+//        try {
+//            // Rozpocznij nagrywanie
+//            AudioFormat format = new AudioFormat(SAMPLE_RATE, 16, 1, true, true);
+//            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+//            TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+//            System.out.println(microphone.getLineInfo());
+//            microphone.open(format);
+//            microphone.start();
+//
+//            ByteArrayOutputStream out = new ByteArrayOutputStream();
+//            byte[] buffer = new byte[4096];
+//            int bytesRead;
+//
+//            System.out.println("Nagrywanie...");
+//
+//            // Nagrywaj dźwięk i dziel na fragmenty
+//            int counter = 0;
+////            while (true) {
+////                bytesRead = microphone.read(buffer, 0, buffer.length);
+////                out.write(buffer, 0, bytesRead);
+////
+////
+////
+////                // Sprawdź, czy wystąpiła cisza
+////                if (isSilence(buffer)) {
+////                    System.out.println("Wykryto ciszę, przetwarzanie fragmentu...");
+////                    byte[] audioData = out.toByteArray();
+////
+////                    // Save captured audio to a file for debugging
+////                    try (FileOutputStream fos = new FileOutputStream(new File("captured_audio_"+counter+".wav"))) {
+////                        fos.write(audioData);
+////                    }
+////
+////
+////                    out.reset();
+////                    counter++;
+////
+////                    // Wyślij fragment do Google Cloud Speech-to-Text
+////                    String transcription = transcribeAudio(audioData);
+////                    System.out.println("Rozpoznany tekst: " + transcription);
+////                }
+////            }
+//
+//            // Capture 5 seconds of audio
+//            long endTime = System.currentTimeMillis() + 5000;
+//            while (System.currentTimeMillis() < endTime) {
+//                bytesRead = microphone.read(buffer, 0, buffer.length);
+//                out.write(buffer, 0, bytesRead);
+//            }
+//
+//            microphone.close();
+//            byte[] audioData = out.toByteArray();
+//
+//            // Convert to AudioInputStream
+//            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(audioData);
+//            AudioInputStream audioInputStream = new AudioInputStream(byteArrayInputStream, format, audioData.length / format.getFrameSize());
+//
+//            // Save captured audio to a file in WAV format for debugging
+//            File wavFile = new File("captured_audio.wav");
+//            AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, wavFile);
+//
+//            System.out.println("Audio captured and saved to captured_audio.wav");
+//
+//
+////             Wyślij fragment do Google Cloud Speech-to-Text
+//            String transcription = transcribeAudio(audioData);
+//            System.out.println("Rozpoznany tekst: " + transcription);
+//
+//
+//        } catch (LineUnavailableException | IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
+    // Sprawdź, czy bufor zawiera ciszę
+    private static boolean isSilence(byte[] buffer) {
+        long sum = 0;
+        for (byte b : buffer) {
+            sum += Math.abs(b);
+        }
+        double average = sum / (double) buffer.length;
+        return average < SILENCE_THRESHOLD;
+    }
+
+    // Wyślij dźwięk do Google Cloud Speech-to-Text
+    private static String transcribeAudio(byte[] audioData) throws IOException {
+        try (SpeechClient speechClient = SpeechClient.create()) {
+            ByteString audioBytes = ByteString.copyFrom(audioData);
+
+            RecognitionConfig config = RecognitionConfig.newBuilder()
+                    .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16)
+                    .setSampleRateHertz(SAMPLE_RATE)
+                    .setLanguageCode("pl-PL") // Ustaw język (np. polski)
+                    .build();
+
+            RecognitionAudio audio = RecognitionAudio.newBuilder()
+                    .setContent(audioBytes)
+                    .build();
+
+            RecognizeResponse response = speechClient.recognize(config, audio);
+
+            List<SpeechRecognitionResult> results = response.getResultsList();
+
+            if (results.size() == 0) {
+                System.out.println("WARNING:: no results");
+            }
+
+            StringBuilder transcription = new StringBuilder();
+            for (SpeechRecognitionResult result : results) {
+                transcription.append(result.getAlternatives(0).getTranscript());
+            }
+
+//            // Check for any error details in the response
+//            if (response.hasError()) {
+//                Status status = response.getError();
+//                System.out.println("Error code: " + status.getCode());
+//                System.out.println("Error message: " + status.getMessage());
+//                for (com.google.rpc.DebugInfo debugInfo : status.getDetailsList()) {
+//                    System.out.println("DebugInfo: " + debugInfo);
+//                }
+//            }
+            System.out.println("Full API response: " + response);
+            return transcription.toString();
+        }
+    }
 }
