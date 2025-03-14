@@ -2,9 +2,11 @@ package org.jacekkowalczyk82.tools.voice;
 
 import com.google.cloud.speech.v1.*;
 import com.google.protobuf.ByteString;
+import org.jtransforms.fft.DoubleFFT_1D;
 
 import javax.sound.sampled.*;
 import java.io.*;
+import java.util.Arrays;
 
 /**
  * VoiceAssistant
@@ -101,16 +103,68 @@ public class VoiceAssistant {
     }
 
     private static byte[] applyLowPassFilter(byte[] audioData, AudioFormat format, float cutoffFrequency) {
-        // Implement a simple low-pass filter (e.g., using a FIR filter)
-        // This is a placeholder implementation
-        // You can use a library like JTransforms for more advanced filtering
-        return audioData; // Placeholder, replace with actual filtering code
+        int sampleRate = (int) format.getSampleRate();
+        int dataSize = audioData.length / format.getFrameSize();
+        double[] input = new double[dataSize];
+        double[] output = new double[dataSize];
+
+        // Convert byte array to double array
+        for (int i = 0; i < dataSize; i++) {
+            input[i] = audioData[i] / 32768.0; // Normalize to -1.0 to 1.0
+        }
+
+        // FFT
+        DoubleFFT_1D fft = new DoubleFFT_1D(dataSize);
+        fft.realForward(input);
+
+        // Apply low-pass filter
+        double nyquist = 0.5 * sampleRate;
+        int cutoffBin = (int) (cutoffFrequency / nyquist * (dataSize / 2));
+        Arrays.fill(input, cutoffBin, dataSize - cutoffBin, 0.0);
+
+        // Inverse FFT
+        fft.realInverse(input, true);
+
+        // Convert double array back to byte array
+        byte[] filteredData = new byte[audioData.length];
+        for (int i = 0; i < dataSize; i++) {
+            int sample = (int) (input[i] * 32768.0);
+            filteredData[i] = (byte) (sample & 0xFF);
+        }
+
+        return filteredData;
     }
 
     private static byte[] applyHighPassFilter(byte[] audioData, AudioFormat format, float cutoffFrequency) {
-        // Implement a simple high-pass filter (e.g., using a FIR filter)
-        // This is a placeholder implementation
-        // You can use a library like JTransforms for more advanced filtering
-        return audioData; // Placeholder, replace with actual filtering code
+        int sampleRate = (int) format.getSampleRate();
+        int dataSize = audioData.length / format.getFrameSize();
+        double[] input = new double[dataSize];
+        double[] output = new double[dataSize];
+
+        // Convert byte array to double array
+        for (int i = 0; i < dataSize; i++) {
+            input[i] = audioData[i] / 32768.0; // Normalize to -1.0 to 1.0
+        }
+
+        // FFT
+        DoubleFFT_1D fft = new DoubleFFT_1D(dataSize);
+        fft.realForward(input);
+
+        // Apply high-pass filter
+        double nyquist = 0.5 * sampleRate;
+        int cutoffBin = (int) (cutoffFrequency / nyquist * (dataSize / 2));
+        Arrays.fill(input, 0, cutoffBin, 0.0);
+
+        // Inverse FFT
+        fft.realInverse(input, true);
+
+        // Convert double array back to byte array
+        byte[] filteredData = new byte[audioData.length];
+        for (int i = 0; i < dataSize; i++) {
+            int sample = (int) (input[i] * 32768.0);
+            filteredData[i] = (byte) (sample & 0xFF);
+        }
+
+        return filteredData;
     }
 }
