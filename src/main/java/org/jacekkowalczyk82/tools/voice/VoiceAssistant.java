@@ -6,26 +6,16 @@ import com.google.protobuf.ByteString;
 import javax.sound.sampled.*;
 import java.io.*;
 
-
 /**
  * VoiceAssistant
  */
 public class VoiceAssistant {
     private static final int SAMPLE_RATE = 16000; // 16 kHz
-    private static final int SILENCE_THRESHOLD = 1000; // Próg ciszy
-    private static final int SILENCE_DURATION = 1000; // Minimalny czas ciszy (ms)
-
 
     public static void main(String[] args) {
         try {
             // Capture audio from microphone
-            AudioFormat format = new AudioFormat(16000, 16, 1, true, true);
-            // Ensure the audio format is LINEAR16 and 16000 Hz
-            if (format.getEncoding() != AudioFormat.Encoding.PCM_SIGNED || format.getSampleRate() != 16000) {
-                System.err.println("Unsupported audio format. Please provide a LINEAR16, 16000 Hz audio file.");
-                return;
-            }
-
+            AudioFormat format = new AudioFormat(SAMPLE_RATE, 16, 1, true, true);
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
             TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
             microphone.open(format);
@@ -57,9 +47,8 @@ public class VoiceAssistant {
 
             System.out.println("Audio captured and saved to captured_audio.wav");
 
-
-            // Apply noise reduction (simple noise gate filter)
-            byte[] processedAudioData = applyNoiseGateFilter(audioData, format);
+            // Apply noise reduction
+            byte[] processedAudioData = applyNoiseReduction(audioData, format);
 
             // Save processed audio to a file for debugging
             ByteArrayInputStream byteArrayInputStream1 = new ByteArrayInputStream(processedAudioData);
@@ -68,16 +57,13 @@ public class VoiceAssistant {
             AudioSystem.write(processedAudioInputStream, AudioFileFormat.Type.WAVE, processedWavFile);
             System.out.println("Processed audio saved to processed_audio.wav");
 
-
-
-
             // Send audio data to Google Cloud Speech-to-Text API
             try (SpeechClient speechClient = SpeechClient.create()) {
                 ByteString audioBytes = ByteString.copyFrom(processedAudioData);
 
                 RecognitionConfig config = RecognitionConfig.newBuilder()
                         .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16)
-                        .setSampleRateHertz(16000)
+                        .setSampleRateHertz(SAMPLE_RATE)
                         .setLanguageCode("en-US")
                         .build();
 
@@ -104,30 +90,27 @@ public class VoiceAssistant {
         }
     }
 
+    private static byte[] applyNoiseReduction(byte[] audioData, AudioFormat format) {
+        // Apply a low-pass filter
+        byte[] lowPassFilteredData = applyLowPassFilter(audioData, format, 3000); // 3 kHz cutoff
 
-    private static byte[] applyNoiseGateFilter(byte[] audioData, AudioFormat format) {
-        // A simple noise gate filter implementation
-        // This example uses a fixed threshold to reduce noise
-        float threshold = 0.02f;
-        ByteArrayOutputStream processedOut = new ByteArrayOutputStream();
-        for (int i = 0; i < audioData.length; i += format.getFrameSize()) {
-            float amplitude = 0;
-            for (int j = 0; j < format.getFrameSize(); j++) {
-                amplitude += audioData[i + j] * audioData[i + j];
-            }
-            amplitude = (float) Math.sqrt(amplitude / format.getFrameSize());
-            if (amplitude > threshold) {
-                for (int j = 0; j < format.getFrameSize(); j++) {
-                    processedOut.write(audioData[i + j]);
-                }
-            } else {
-                for (int j = 0; j < format.getFrameSize(); j++) {
-                    processedOut.write(0);
-                }
-            }
-        }
-        return processedOut.toByteArray();
+        // Apply a high-pass filter
+        byte[] highPassFilteredData = applyHighPassFilter(lowPassFilteredData, format, 300); // 300 Hz cutoff
+
+        return highPassFilteredData;
     }
 
+    private static byte[] applyLowPassFilter(byte[] audioData, AudioFormat format, float cutoffFrequency) {
+        // Implement a simple low-pass filter (e.g., using a FIR filter)
+        // This is a placeholder implementation
+        // You can use a library like JTransforms for more advanced filtering
+        return audioData; // Placeholder, replace with actual filtering code
+    }
 
+    private static byte[] applyHighPassFilter(byte[] audioData, AudioFormat format, float cutoffFrequency) {
+        // Implement a simple high-pass filter (e.g., using a FIR filter)
+        // This is a placeholder implementation
+        // You can use a library like JTransforms for more advanced filtering
+        return audioData; // Placeholder, replace with actual filtering code
+    }
 }
